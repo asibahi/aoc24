@@ -1,10 +1,11 @@
+use ahash::{HashMap, HashMapExt};
 use nom::{
     character::complete::{newline, space1, u64},
     combinator::map,
     multi::separated_list1,
     sequence::separated_pair,
 };
-use std::{collections::HashMap, ops::Add};
+use std::ops::Add;
 
 advent_of_code::solution!(1);
 
@@ -20,7 +21,7 @@ fn parse_file(input: &[u8]) -> nom::IResult<&[u8], (Vec<u64>, Vec<u64>)> {
 
 pub fn part_one(input: &str) -> Option<u64> {
     let input = input.as_bytes();
-    let (mut fst, mut snd) = parse_file(input).unwrap().1;
+    let (mut fst, mut snd) = parse_file(input).ok()?.1;
 
     fst.sort();
     snd.sort();
@@ -33,9 +34,9 @@ pub fn part_one(input: &str) -> Option<u64> {
 
 pub fn part_two(input: &str) -> Option<u64> {
     let input = input.as_bytes();
-    let (fst, snd) = parse_file(input).unwrap().1;
+    let (fst, snd) = parse_file(input).ok()?.1;
 
-    let mut map = HashMap::new();
+    let mut map = HashMap::with_capacity(1000);
     for d in snd {
         map.entry(d).and_modify(|d| *d += 1).or_insert(1);
     }

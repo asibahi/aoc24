@@ -4,40 +4,45 @@ use nom::{
     multi::separated_list1,
     sequence::separated_pair,
 };
+use std::{collections::HashMap, ops::Add};
+
 advent_of_code::solution!(1);
 
-fn parse_line(input: &str) -> nom::IResult<&str, (u64, u64)> {
+fn parse_line(input: &[u8]) -> nom::IResult<&[u8], (u64, u64)> {
     separated_pair(u64, space1, u64)(input)
 }
 
-fn parse_file(input: &str) -> nom::IResult<&str, (Vec<u64>, Vec<u64>)> {
+fn parse_file(input: &[u8]) -> nom::IResult<&[u8], (Vec<u64>, Vec<u64>)> {
     map(separated_list1(newline, parse_line), |v| {
         v.into_iter().unzip()
     })(input)
 }
 
 pub fn part_one(input: &str) -> Option<u64> {
+    let input = input.as_bytes();
     let (mut fst, mut snd) = parse_file(input).unwrap().1;
 
     fst.sort();
     snd.sort();
 
-    let mut acc = 0;
-
-    for (a, b) in fst.into_iter().zip(snd) {
-        acc += a.abs_diff(b);
-    }
-
-    Some(acc)
+    fst.into_iter()
+        .zip(snd)
+        .map(|(a, b)| a.abs_diff(b))
+        .reduce(Add::add)
 }
 
 pub fn part_two(input: &str) -> Option<u64> {
+    let input = input.as_bytes();
     let (fst, snd) = parse_file(input).unwrap().1;
+
+    let mut map = HashMap::new();
+    for d in snd {
+        map.entry(d).and_modify(|d| *d += 1).or_insert(1);
+    }
 
     let mut sim = 0;
     for a in fst {
-        let count = snd.iter().filter(|b| a == **b).count();
-        sim += a * count as u64;
+        sim += a * map.get(&a).copied().unwrap_or_default();
     }
 
     Some(sim)

@@ -31,14 +31,12 @@ fn is_safe_1(list: impl Iterator<Item = u8>) -> bool {
 fn is_safe_2(list: &[u8]) -> bool {
     is_safe_1(list.iter().copied())
         || (0..list.len()).any(|doomed_idx| {
-            let list = list
+            let trimmed_list = list[..doomed_idx]
                 .iter()
-                .enumerate()
-                .filter(|(i, _)| *i != doomed_idx)
-                .map(|(_, v)| v)
+                .chain(&list[doomed_idx + 1..])
                 .copied();
 
-            is_safe_1(list)
+            is_safe_1(trimmed_list)
         })
 }
 

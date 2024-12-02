@@ -3,7 +3,9 @@ use std::cmp::Ordering;
 use itertools::Itertools;
 use nom::{
     character::complete::{newline, space1, u8},
+    combinator::iterator,
     multi::separated_list1,
+    sequence::terminated,
     IResult,
 };
 
@@ -11,10 +13,6 @@ advent_of_code::solution!(2);
 
 fn parse_line(input: &[u8]) -> IResult<&[u8], Vec<u8>, ()> {
     separated_list1(space1, u8)(input)
-}
-
-fn parse_file(input: &[u8]) -> IResult<&[u8], Vec<Vec<u8>>, ()> {
-    separated_list1(newline, parse_line)(input)
 }
 
 fn is_safe_1(list: impl Iterator<Item = u8>) -> bool {
@@ -46,10 +44,7 @@ fn is_safe_2(list: &[u8]) -> bool {
 
 pub fn part_one(input: &str) -> Option<u32> {
     let input = input.as_bytes();
-    let lists = parse_file(input).ok()?.1;
-
-    let res = lists
-        .into_iter()
+    let res = iterator(input, terminated(parse_line, newline))
         .filter(|v| is_safe_1(v.iter().copied()))
         .count();
 
@@ -58,9 +53,9 @@ pub fn part_one(input: &str) -> Option<u32> {
 
 pub fn part_two(input: &str) -> Option<u32> {
     let input = input.as_bytes();
-    let lists = parse_file(input).ok()?.1;
-
-    let res = lists.into_iter().filter(|v| is_safe_2(v)).count();
+    let res = iterator(input, terminated(parse_line, newline))
+        .filter(|v| is_safe_2(v))
+        .count();
 
     Some(res as u32)
 }

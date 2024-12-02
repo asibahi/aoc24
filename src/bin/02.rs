@@ -2,63 +2,56 @@ use std::cmp::Ordering;
 
 use itertools::Itertools;
 use nom::{
-    character::complete::{newline, space1, u32},
+    character::complete::{newline, space1, u8},
     multi::separated_list1,
     IResult,
 };
 
 advent_of_code::solution!(2);
 
-fn parse_line(input: &[u8]) -> IResult<&[u8], Vec<u32>> {
-    separated_list1(space1, u32)(input)
+fn parse_line(input: &[u8]) -> IResult<&[u8], Vec<u8>, ()> {
+    separated_list1(space1, u8)(input)
 }
 
-fn parse_file(input: &[u8]) -> nom::IResult<&[u8], Vec<Vec<u32>>> {
-    (separated_list1(newline, parse_line))(input)
+fn parse_file(input: &[u8]) -> IResult<&[u8], Vec<Vec<u8>>, ()> {
+    separated_list1(newline, parse_line)(input)
 }
 
-fn is_safe_1(list: &[u32]) -> bool {
-    let list = list.iter().tuple_windows();
+fn is_safe_1(list: impl Iterator<Item = u8>) -> bool {
+    let list = list.tuple_windows();
     let mut ordering = Ordering::Equal;
     for (a, b) in list {
-        let c = a.cmp(b);
+        let c = a.cmp(&b);
         ordering = ordering.then(c);
-        if !(c == ordering && (1..=3).contains(&a.abs_diff(*b))) {
+        if !(c == ordering && (1..=3).contains(&a.abs_diff(b))) {
             return false;
         }
     }
     true
 }
 
-fn is_safe_2(list: &[u32]) -> bool {
-    if is_safe_1(list) {
-        return true;
-    }
+fn is_safe_2(list: &[u8]) -> bool {
+    is_safe_1(list.iter().copied())
+        || (0..list.len()).any(|doomed_idx| {
+            let list = list
+                .iter()
+                .enumerate()
+                .filter(|(i, _)| *i != doomed_idx)
+                .map(|(_, v)| v)
+                .copied();
 
-    (0..list.len()).any(|doomed_idx| {
-        let list = list
-            .iter()
-            .enumerate()
-            .filter(|(i, _)| *i != doomed_idx)
-            .map(|(_, v)| v)
-            .tuple_windows();
-        let mut ordering = Ordering::Equal;
-        for (a, b) in list {
-            let c = a.cmp(b);
-            ordering = ordering.then(c);
-            if !(c == ordering && (1..=3).contains(&a.abs_diff(*b))) {
-                return false;
-            }
-        }
-        true
-    })
+            is_safe_1(list)
+        })
 }
 
 pub fn part_one(input: &str) -> Option<u32> {
     let input = input.as_bytes();
     let lists = parse_file(input).ok()?.1;
 
-    let res = lists.into_iter().filter(|v| is_safe_1(v)).count();
+    let res = lists
+        .into_iter()
+        .filter(|v| is_safe_1(v.iter().copied()))
+        .count();
 
     Some(res as u32)
 }

@@ -1,17 +1,16 @@
-use std::cmp::Ordering;
-
+use advent_of_code::BytesResult;
 use itertools::Itertools;
 use nom::{
     character::complete::{newline, space1, u8},
     combinator::iterator,
     multi::separated_list1,
     sequence::terminated,
-    IResult,
 };
+use std::cmp::Ordering;
 
 advent_of_code::solution!(2);
 
-fn parse_line(input: &[u8]) -> IResult<&[u8], Vec<u8>, ()> {
+fn parse_line(input: &[u8]) -> BytesResult<Vec<u8>> {
     separated_list1(space1, u8)(input)
 }
 

@@ -1,3 +1,4 @@
+use advent_of_code::BytesResult;
 use itertools::Either::{self, *};
 use nom::{
     branch::alt,
@@ -6,25 +7,24 @@ use nom::{
     combinator::{map, value},
     multi::many1,
     sequence::{delimited, separated_pair},
-    IResult,
 };
 
 advent_of_code::solution!(3);
 
-fn parse_mul(input: &[u8]) -> IResult<&[u8], u64> {
+fn parse_mul(input: &[u8]) -> BytesResult<u64> {
     map(
         delimited(tag("mul("), separated_pair(u64, tag(","), u64), tag(")")),
         |(a, b)| a * b,
     )(input)
 }
 
-fn parse_one(input: &[u8]) -> IResult<&[u8], u64> {
+fn parse_one(input: &[u8]) -> BytesResult<u64> {
     map(many1(alt((parse_mul, value(0, take(1u8))))), |v| {
         v.into_iter().sum()
     })(input)
 }
 
-fn parse_two(input: &[u8]) -> IResult<&[u8], Either<u64, bool>> {
+fn parse_two(input: &[u8]) -> BytesResult<Either<u64, bool>> {
     alt((
         map(parse_mul, Left),
         value(Right(true), tag("do()")),

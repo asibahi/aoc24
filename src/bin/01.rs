@@ -1,3 +1,4 @@
+use advent_of_code::BytesResult;
 use ahash::{HashMap, HashMapExt};
 use nom::{
     character::complete::{newline, space1, u64},
@@ -9,11 +10,11 @@ use std::ops::Add;
 
 advent_of_code::solution!(1);
 
-fn parse_line(input: &[u8]) -> nom::IResult<&[u8], (u64, u64)> {
+fn parse_line(input: &[u8]) -> BytesResult<(u64, u64)> {
     separated_pair(u64, space1, u64)(input)
 }
 
-fn parse_file(input: &[u8]) -> nom::IResult<&[u8], (Vec<u64>, Vec<u64>)> {
+fn parse_file(input: &[u8]) -> BytesResult<(Vec<u64>, Vec<u64>)> {
     map(separated_list1(newline, parse_line), |v| {
         v.into_iter().unzip()
     })(input)

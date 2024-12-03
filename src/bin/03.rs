@@ -1,11 +1,8 @@
 use advent_of_code::BytesResult;
-use itertools::Either::{self, *};
 use nom::{
-    branch::alt,
-    bytes::complete::{tag, take},
+    bytes::complete::tag,
     character::complete::u64,
-    combinator::{map, value},
-    multi::many1,
+    combinator::map,
     sequence::{delimited, separated_pair},
 };
 
@@ -18,39 +15,58 @@ fn parse_mul(input: &[u8]) -> BytesResult<u64> {
     )(input)
 }
 
-fn parse_one(input: &[u8]) -> BytesResult<u64> {
-    map(many1(alt((parse_mul, value(0, take(1u8))))), |v| {
-        v.into_iter().sum()
-    })(input)
-}
-
-fn parse_two(input: &[u8]) -> BytesResult<Either<u64, bool>> {
-    alt((
-        map(parse_mul, Left),
-        value(Right(true), tag("do()")),
-        value(Right(false), tag("don't()")),
-        value(Left(0), take(1u8)),
-    ))(input)
-}
-
 pub fn part_one(input: &str) -> Option<u64> {
-    let ret = parse_one(input.as_bytes()).unwrap().1;
-    Some(ret)
+    let mut ioo = input.as_bytes();
+    let mut acc = 0;
+    while !ioo.is_empty() {
+        if ioo[0] != b'm' {
+            ioo = &ioo[1..];
+            continue;
+        }
+
+        if let Ok((rem, res)) = parse_mul(ioo) {
+            ioo = rem;
+            acc += res;
+        } else {
+            ioo = &ioo[1..];
+        }
+    }
+
+    Some(acc)
 }
 
 pub fn part_two(input: &str) -> Option<u64> {
     let mut input = input.as_bytes();
-
     let mut acc = 0;
-    let mut do_ = true;
 
-    while let Ok((rem, result)) = parse_two(input) {
-        input = rem;
+    while !input.is_empty() {
+        while !input.is_empty() {
+            if input[0] != b'd' && input[0] != b'm' {
+                input = &input[1..];
+                continue;
+            }
+            if let Ok((rem, result)) = parse_mul(input) {
+                input = rem;
+                acc += result
+            } else if let Ok((rem, _)) = tag::<_, _, ()>("don't()")(input) {
+                input = rem;
+                break;
+            } else {
+                input = &input[1..]
+            }
+        }
 
-        match result {
-            Left(v) if do_ => acc += v,
-            Right(cond) => do_ = cond,
-            _ => (),
+        while !input.is_empty() {
+            if input[0] != b'd' {
+                input = &input[1..];
+                continue;
+            }
+            if let Ok((rem, _)) = tag::<_, _, ()>("do()")(input) {
+                input = rem;
+                break;
+            } else {
+                input = &input[1..]
+            }
         }
     }
 

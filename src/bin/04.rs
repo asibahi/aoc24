@@ -55,8 +55,73 @@ pub fn part_one_nom(input: &str) -> Option<u32> {
     Some(acc)
 }
 
-// much faster than the solution wiht nom ,sadly.
+// bitset impl
 pub fn part_one(input: &str) -> Option<u32> {
+    use advent_of_code::bitset::Bitset;
+
+    let mut xppp;
+    let mut sppp;
+
+    let mut xpp = Bitset::new();
+    let mut mpp;
+    let mut app;
+    let mut spp = Bitset::new();
+
+    let mut xp = Bitset::new();
+    let mut mp = Bitset::new();
+    let mut ap = Bitset::new();
+    let mut sp = Bitset::new();
+
+    let mut x = Bitset::new();
+    let mut m = Bitset::new();
+    let mut a = Bitset::new();
+    let mut s = Bitset::new();
+
+    let mut acc = 0;
+
+    for line in input.lines() {
+        xppp = xpp;
+        xpp = xp;
+        xp = x;
+        x = Bitset::new();
+
+        mpp = mp;
+        mp = m;
+        m = Bitset::new();
+
+        app = ap;
+        ap = a;
+        a = Bitset::new();
+
+        sppp = spp;
+        spp = sp;
+        sp = s;
+        s = Bitset::new();
+
+        for byte in line.as_bytes() {
+            x = x.push_bit(*byte == b'X');
+            m = m.push_bit(*byte == b'M');
+            a = a.push_bit(*byte == b'A');
+            s = s.push_bit(*byte == b'S');
+        }
+
+        acc += (x & m << 1 & a << 2 & s << 3).count_ones();
+        acc += (x & m >> 1 & a >> 2 & s >> 3).count_ones();
+
+        acc += (x & mp << 1 & app << 2 & sppp << 3).count_ones();
+        acc += (x & mp >> 1 & app >> 2 & sppp >> 3).count_ones();
+        acc += (x & mp & app & sppp).count_ones();
+
+        acc += (xppp & mpp << 1 & ap << 2 & s << 3).count_ones();
+        acc += (xppp & mpp >> 1 & ap >> 2 & s >> 3).count_ones();
+        acc += (xppp & mpp & ap & s).count_ones();
+    }
+
+    Some(acc)
+}
+
+// much faster than the solution wiht nom ,sadly.
+pub fn part_one_imp(input: &str) -> Option<u32> {
     let line_len = input.lines().next().unwrap().len() + 1;
     let input = input.as_bytes();
 

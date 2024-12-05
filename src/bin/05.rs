@@ -1,18 +1,34 @@
 use std::cmp::Ordering;
 
 use advent_of_code::BytesResult;
+use itertools::Either;
 use nom::{
     bytes::complete::{tag, take},
     character::complete::{newline, u32},
-    combinator::verify,
+    combinator::{iterator, verify},
     multi::separated_list0,
-    sequence::separated_pair,
+    sequence::{separated_pair, terminated},
 };
 
 advent_of_code::solution!(5);
 
 fn parse_rules(input: &[u8]) -> BytesResult<Vec<(u32, u32)>> {
     separated_list0(newline, separated_pair(u32, tag("|"), u32))(input)
+}
+
+fn mid(manual: &[u32]) -> u32 {
+    manual[(manual.len() - 1) / 2]
+}
+
+fn parse_manual<'a>(rules: &'a [(u32, u32)], input: &'a [u8]) -> BytesResult<'a, Either<u32, u32>> {
+    let (input, mut manual) =
+        verify(separated_list0(tag(","), u32), |v: &[u32]| !v.is_empty())(input)?;
+    if validate_manual(&manual, rules) {
+        Ok((input, Either::Left(mid(&manual))))
+    } else {
+        fix_manual(&mut manual, rules);
+        Ok((input, Either::Right(mid(&manual))))
+    }
 }
 
 fn parse_manuals(input: &[u8]) -> BytesResult<Vec<Vec<u32>>> {
@@ -24,6 +40,20 @@ fn parse_manuals(input: &[u8]) -> BytesResult<Vec<Vec<u32>>> {
 
 fn validate_manual(manual: &[u32], rules: &[(u32, u32)]) -> bool {
     manual.is_sorted_by(|a, b| rules.contains(&(*a, *b)))
+}
+
+pub fn both_parts(input: &str) -> Option<(u32, u32)> {
+    let input = input.as_bytes();
+
+    let (input, rules) = parse_rules(input).ok()?;
+    let (input, _) = take::<_, _, ()>(2u8)(input).ok()?;
+
+    let res = iterator(input, terminated(|i| parse_manual(&rules, i), newline))
+        .fold((0, 0), |(o, e), b| {
+            (o + b.left_or_default(), e + b.right_or_default())
+        });
+
+    Some(res)
 }
 
 pub fn part_one(input: &str) -> Option<u32> {
@@ -39,8 +69,7 @@ pub fn part_one(input: &str) -> Option<u32> {
             continue;
         }
 
-        let mid = manual[(manual.len() - 1) / 2];
-        acc += mid;
+        acc += mid(&manual);
     }
 
     Some(acc)
@@ -73,8 +102,7 @@ pub fn part_two(input: &str) -> Option<u32> {
 
         fix_manual(&mut manual, &rules);
 
-        let mid = manual[(manual.len() - 1) / 2];
-        acc += mid;
+        acc += mid(&manual);
     }
 
     Some(acc)

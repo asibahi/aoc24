@@ -7,11 +7,12 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 advent_of_code::solution!(6);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
 enum Direction {
-    Up,
-    Right,
-    Left,
-    Down,
+    Up = 1,
+    Right = 2,
+    Left = 4,
+    Down = 8,
 }
 
 #[derive(Debug)]
@@ -21,12 +22,12 @@ enum Element {
     Visited,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 enum Element2 {
     Obstacle,
     HotPath,
     Unvisited,
-    Visited(Vec<Direction>),
+    Visited(u8),
 }
 
 pub fn part_one(input: &str) -> Option<u32> {
@@ -96,7 +97,7 @@ pub fn part_two(input: &str) -> Option<u32> {
                 '.' => map.insert((idx, jdx), Element2::Unvisited),
                 '^' => {
                     guard_loc = (idx, jdx);
-                    map.insert((idx, jdx), Element2::Visited(vec![Direction::Up]))
+                    map.insert((idx, jdx), Element2::Visited(Direction::Up as u8))
                 }
                 _ => unreachable!(),
             };
@@ -167,13 +168,13 @@ pub fn part_two(input: &str) -> Option<u32> {
                     }
                     Some(Element2::Unvisited | Element2::HotPath) => {
                         guard_loc = forward;
-                        map.insert(forward, Element2::Visited(vec![dir]));
+                        map.insert(forward, Element2::Visited(dir as u8));
                     }
                     Some(Element2::Visited(ref mut v)) => {
-                        if v.contains(&dir) {
+                        if *v & dir as u8 > 0 {
                             return true;
                         }
-                        v.push(dir);
+                        *v |= dir as u8;
                         guard_loc = forward
                     }
                     None => return false,

@@ -1,10 +1,18 @@
 // #![expect(unused)]
 
 // use advent_of_code::BytesResult;
+use advent_of_code::{Span, SpanResult};
 use ahash::{HashMap, HashMapExt, HashSet, HashSetExt};
+use nom::{
+    character::complete::{newline, one_of},
+    combinator::{iterator, opt},
+    sequence::preceded,
+};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 advent_of_code::solution!(6);
+
+type Position = (usize, usize);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
@@ -15,7 +23,7 @@ enum Direction {
     Down = 8,
 }
 impl Direction {
-    fn forward(self, (x, y): (usize, usize)) -> (usize, usize) {
+    fn forward(self, (x, y): Position) -> Position {
         match self {
             Direction::Up => (x - 1, y),
             Direction::Right => (x, y + 1),
@@ -40,6 +48,64 @@ enum Element {
     Visited(u8),
 }
 
+fn parse_token(input: Span) -> SpanResult<(Position, Element)> {
+    let row = input.location_line() as usize;
+    let col = input.get_column();
+
+    let (input, e) = one_of("#.^")(input)?;
+    let e = match e {
+        '#' => Element::Obstacle,
+        '.' => Element::Unvisited,
+        '^' => Element::Visited(0),
+        _ => unreachable!(),
+    };
+
+    Ok((input, ((row, col), e)))
+}
+
+fn parse_grid(input: Span) -> SpanResult<(HashMap<Position, Element>, Position)> {
+    let mut v = iterator(input, preceded(opt(newline), parse_token));
+    let mut start = (0, 0);
+    let map = HashMap::from_iter(v.inspect(|(k, v)| {
+        if matches!(v, Element::Visited(_)) {
+            start = *k;
+        }
+    }));
+    let (input, _) = v.finish()?;
+
+    Ok((input, (map, start)))
+}
+
+pub fn part_one_nom(input: &str) -> Option<u32> {
+    let input = Span::new(input.as_bytes());
+
+    let (_, (map, start)) = parse_grid(input).ok()?;
+
+    let counter = walk(start, map);
+
+    Some(counter)
+}
+
+fn walk(mut guard_loc: Position, mut map: HashMap<Position, Element>) -> u32 {
+    let mut dir = Direction::Up;
+    let mut counter = 1;
+    loop {
+        let forward = dir.forward(guard_loc);
+
+        match map.get(&forward) {
+            Some(Element::Obstacle) => dir = dir.rotate(),
+            Some(Element::Unvisited) => {
+                counter += 1;
+                guard_loc = forward;
+                map.insert(forward, Element::Visited(0));
+            }
+            Some(Element::Visited(_)) => guard_loc = forward,
+            None => break,
+        }
+    }
+    counter
+}
+
 pub fn part_one(input: &str) -> Option<u32> {
     let mut map = HashMap::with_capacity(7000);
     let mut guard_loc = (0, 0);
@@ -60,23 +126,7 @@ pub fn part_one(input: &str) -> Option<u32> {
         }
     }
 
-    let mut counter = 1;
-    let mut dir = Direction::Up;
-
-    loop {
-        let forward = dir.forward(guard_loc);
-
-        match map.get(&forward) {
-            Some(Element::Obstacle) => dir = dir.rotate(),
-            Some(Element::Unvisited) => {
-                counter += 1;
-                guard_loc = forward;
-                map.insert(forward, Element::Visited(0));
-            }
-            Some(Element::Visited(_)) => guard_loc = forward,
-            None => break,
-        }
-    }
+    let counter = walk(guard_loc, map);
 
     Some(counter)
 }

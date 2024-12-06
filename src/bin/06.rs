@@ -33,23 +33,15 @@ impl Direction {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 enum Element {
     Obstacle,
-    Unvisited,
-    Visited,
-}
-
-#[derive(Debug, Clone, Copy)]
-enum Element2 {
-    Obstacle,
-    HotPath,
     Unvisited,
     Visited(u8),
 }
 
 pub fn part_one(input: &str) -> Option<u32> {
-    let mut map = HashMap::new();
+    let mut map = HashMap::with_capacity(7000);
     let mut guard_loc = (0, 0);
 
     for (idx, line) in input.lines().enumerate() {
@@ -61,7 +53,7 @@ pub fn part_one(input: &str) -> Option<u32> {
                 '.' => map.insert((idx, jdx), Element::Unvisited),
                 '^' => {
                     guard_loc = (idx, jdx);
-                    map.insert((idx, jdx), Element::Visited)
+                    map.insert((idx, jdx), Element::Visited(0))
                 }
                 _ => unreachable!(),
             };
@@ -79,9 +71,9 @@ pub fn part_one(input: &str) -> Option<u32> {
             Some(Element::Unvisited) => {
                 counter += 1;
                 guard_loc = forward;
-                map.insert(forward, Element::Visited);
+                map.insert(forward, Element::Visited(0));
             }
-            Some(Element::Visited) => guard_loc = forward,
+            Some(Element::Visited(_)) => guard_loc = forward,
             None => break,
         }
     }
@@ -90,7 +82,7 @@ pub fn part_one(input: &str) -> Option<u32> {
 }
 
 pub fn part_two(input: &str) -> Option<u32> {
-    let mut map = HashMap::new();
+    let mut map = HashMap::with_capacity(7000);
     let mut start = (0, 0);
 
     for (idx, line) in input.lines().enumerate() {
@@ -98,11 +90,11 @@ pub fn part_two(input: &str) -> Option<u32> {
         for (jdx, c) in line.char_indices() {
             let jdx = jdx + 1;
             match c {
-                '#' => map.insert((idx, jdx), Element2::Obstacle),
-                '.' => map.insert((idx, jdx), Element2::Unvisited),
+                '#' => map.insert((idx, jdx), Element::Obstacle),
+                '.' => map.insert((idx, jdx), Element::Unvisited),
                 '^' => {
                     start = (idx, jdx);
-                    map.insert((idx, jdx), Element2::Visited(Direction::Up as u8))
+                    map.insert((idx, jdx), Element::Visited(Direction::Up as u8))
                 }
                 _ => unreachable!(),
             };
@@ -116,11 +108,10 @@ pub fn part_two(input: &str) -> Option<u32> {
         let forward = dir.forward(guard_loc);
         match map.get(&forward) {
             None => break,
-            Some(Element2::Obstacle) => dir = dir.rotate(),
-            Some(Element2::Unvisited) => {
+            Some(Element::Obstacle) => dir = dir.rotate(),
+            Some(Element::Unvisited) => {
                 guard_loc = forward;
                 set.insert(forward);
-                map.insert(forward, Element2::HotPath);
             }
             _ => guard_loc = forward,
         }
@@ -131,7 +122,7 @@ pub fn part_two(input: &str) -> Option<u32> {
         .filter(|(idx, jdx)| {
             let mut map = map.clone();
 
-            map.insert((*idx, *jdx), Element2::Obstacle);
+            map.insert((*idx, *jdx), Element::Obstacle);
 
             let mut dir = Direction::Up;
             let mut guard_loc = start;
@@ -140,15 +131,15 @@ pub fn part_two(input: &str) -> Option<u32> {
                 let forward = dir.forward(guard_loc);
 
                 match map.get_mut(&forward) {
-                    Some(Element2::Visited(v)) if *v & dir as u8 > 0 => return true,
+                    Some(Element::Visited(v)) if *v & dir as u8 > 0 => return true,
                     None => return false,
 
-                    Some(Element2::Obstacle) => dir = dir.rotate(),
-                    Some(Element2::Unvisited | Element2::HotPath) => {
+                    Some(Element::Obstacle) => dir = dir.rotate(),
+                    Some(Element::Unvisited) => {
                         guard_loc = forward;
-                        map.insert(forward, Element2::Visited(dir as u8));
+                        *map.get_mut(&forward).unwrap() = Element::Visited(dir as u8);
                     }
-                    Some(Element2::Visited(ref mut v)) => {
+                    Some(Element::Visited(ref mut v)) => {
                         *v |= dir as u8;
                         guard_loc = forward
                     }

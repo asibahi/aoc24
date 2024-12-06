@@ -1,7 +1,8 @@
 // #![expect(unused)]
 
 // use advent_of_code::BytesResult;
-use ahash::{HashMap, HashMapExt};
+use ahash::{HashMap, HashMapExt, HashSet, HashSetExt};
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 advent_of_code::solution!(6);
 
@@ -23,6 +24,7 @@ enum Element {
 #[derive(Debug, Clone)]
 enum Element2 {
     Obstacle,
+    HotPath,
     Unvisited,
     Visited(Vec<Direction>),
 }
@@ -101,18 +103,45 @@ pub fn part_two(input: &str) -> Option<u32> {
         }
     }
 
-    let mut counter = 0;
+    let mut set = HashSet::with_capacity(6000);
+    {
+        let mut guard_loc = guard_loc;
+        let mut dir = Direction::Up;
+        loop {
+            let (x, y) = guard_loc;
+            let forward = match dir {
+                Direction::Up => (x - 1, y),
+                Direction::Right => (x, y + 1),
+                Direction::Left => (x, y - 1),
+                Direction::Down => (x + 1, y),
+            };
 
-    for (idx, line) in input.lines().enumerate() {
-        let idx = idx + 1;
-        for (jdx, _) in line.char_indices() {
-            let jdx = jdx + 1;
+            match map.get(&forward) {
+                Some(Element2::Obstacle) => {
+                    dir = match dir {
+                        Direction::Up => Direction::Right,
+                        Direction::Right => Direction::Down,
+                        Direction::Left => Direction::Up,
+                        Direction::Down => Direction::Left,
+                    };
+                }
+                Some(Element2::Unvisited) => {
+                    guard_loc = forward;
+                    set.insert(forward);
+                    map.insert(forward, Element2::HotPath);
+                }
+                None => break,
+                _ => guard_loc = forward,
+            }
+        }
+    }
+
+    let counter = set
+        .par_iter()
+        .filter(|(idx, jdx)| {
             let mut map = map.clone();
 
-            match map.insert((idx, jdx), Element2::Obstacle) {
-                Some(Element2::Unvisited) => (),
-                _ => continue,
-            }
+            map.insert((*idx, *jdx), Element2::Obstacle);
 
             // ==
             let mut dir = Direction::Up;
@@ -136,26 +165,25 @@ pub fn part_two(input: &str) -> Option<u32> {
                             Direction::Down => Direction::Left,
                         };
                     }
-                    Some(Element2::Unvisited) => {
+                    Some(Element2::Unvisited | Element2::HotPath) => {
                         guard_loc = forward;
                         map.insert(forward, Element2::Visited(vec![dir]));
                     }
                     Some(Element2::Visited(ref mut v)) => {
                         if v.contains(&dir) {
-                            counter += 1;
-                            break;
+                            return true;
                         }
                         v.push(dir);
                         guard_loc = forward
                     }
-                    None => break,
+                    None => return false,
                 }
             }
             //==
-        }
-    }
+        })
+        .count();
 
-    Some(counter)
+    Some(counter as u32)
 }
 
 #[cfg(test)]

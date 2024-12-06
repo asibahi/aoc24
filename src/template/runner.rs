@@ -74,7 +74,7 @@ fn bench<I: Copy, T>(func: impl Fn(I) -> T, input: I) -> (Duration, u128) {
         black_box(func(black_box(input)));
         timers.push(timer.elapsed());
         bench_iterations += 1;
-        if bench_timer.elapsed() > Duration::from_secs(5) {
+        if bench_iterations >= 10 && bench_timer.elapsed() > Duration::from_secs(5) {
             break;
         }
     }

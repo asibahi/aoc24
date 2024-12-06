@@ -1,3 +1,4 @@
+#![expect(unused)]
 use advent_of_code::BytesResult;
 
 advent_of_code::solution!(%DAY_NUMBER%);

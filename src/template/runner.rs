@@ -29,7 +29,7 @@ fn run_timed<I: Copy, T>(
     func: impl Fn(I) -> T,
     input: I,
     hook: impl Fn(&T),
-) -> (T, Duration, u128) {
+) -> (T, Duration, usize) {
     let timer = Instant::now();
     let result = {
         #[cfg(feature = "dhat-heap")]
@@ -50,15 +50,11 @@ fn run_timed<I: Copy, T>(
     (result, run.0, run.1)
 }
 
-fn bench<I: Copy, T>(func: impl Fn(I) -> T, input: I) -> (Duration, u128) {
+fn bench<I: Copy, T>(func: impl Fn(I) -> T, input: I) -> (Duration, usize) {
     let mut stdout = stdout();
 
     print!(" > {ANSI_ITALIC}benching{ANSI_RESET}");
     let _ = stdout.flush();
-
-    let mut bench_iterations = 0;
-
-    let mut timers: Vec<Duration> = vec![];
 
     let warmup_timer = Instant::now();
     loop {
@@ -68,33 +64,24 @@ fn bench<I: Copy, T>(func: impl Fn(I) -> T, input: I) -> (Duration, u128) {
         }
     }
 
+    let mut timers: Vec<Duration> = vec![];
     let bench_timer = Instant::now();
     loop {
         let timer = Instant::now();
         black_box(func(black_box(input)));
         timers.push(timer.elapsed());
-        bench_iterations += 1;
-        if bench_iterations >= 10 && bench_timer.elapsed() > Duration::from_secs(5) {
+        if timers.len() >= 10 && bench_timer.elapsed() > Duration::from_secs(5) {
             break;
         }
     }
 
     (
-        #[allow(clippy::cast_possible_truncation)]
-        Duration::from_nanos(average_duration(&timers) as u64),
-        bench_iterations,
+        timers.iter().sum::<Duration>() / timers.len() as u32,
+        timers.len(),
     )
 }
 
-fn average_duration(numbers: &[Duration]) -> u128 {
-    numbers
-        .iter()
-        .map(std::time::Duration::as_nanos)
-        .sum::<u128>()
-        / numbers.len() as u128
-}
-
-fn format_duration(duration: &Duration, samples: u128) -> String {
+fn format_duration(duration: &Duration, samples: usize) -> String {
     if samples == 1 {
         format!(" ({duration:.1?})")
     } else {

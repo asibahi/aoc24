@@ -22,24 +22,36 @@ fn parse_line(input: &[u8]) -> BytesResult<Test> {
     Ok((input, Test { target, list }))
 }
 
-fn conc(lhs: u64, rhs: u64) -> u64 {
-    lhs * 10u64.pow(rhs.ilog10() + 1) + rhs
-}
+fn validate_test(test: u64, list: &[u64], part2: bool) -> bool {
+    if list.len() == 1 {
+        return test == list[0];
+    }
+    let n = *list.last().unwrap();
 
-fn validate_test(target: u64, list: &[u64], acc: u64, part2: bool) -> bool {
-    if list.is_empty() {
-        return acc == target;
+    if n >= test {
+        return false;
+    }
+    let next_list = &list[..list.len() - 1];
+
+    let mullable = test % n == 0;
+    if mullable && validate_test(test / n, next_list, part2) {
+        return true;
     }
 
-    acc <= target
-        && (validate_test(target, &list[1..], acc + list[0], part2)
-            || validate_test(target, &list[1..], acc * list[0], part2)
-            || (part2 && validate_test(target, &list[1..], conc(acc, list[0]), part2)))
+    if part2 {
+        let d = 10u64.pow(n.ilog10() + 1);
+        let concable = (test - n) % d == 0;
+        if concable && validate_test((test - n) / d, next_list, part2) {
+            return true;
+        }
+    }
+
+    validate_test(test - n, next_list, part2)
 }
 
 pub fn part_one(input: &str) -> Option<u64> {
     let res = iterator(input.as_bytes(), terminated(parse_line, newline))
-        .filter(|t| validate_test(t.target, &t.list[1..], t.list[0], false))
+        .filter(|t| validate_test(t.target, &t.list, false))
         .map(|t| t.target)
         .sum();
 
@@ -50,7 +62,7 @@ pub fn part_two(input: &str) -> Option<u64> {
     use rayon::iter::{ParallelBridge, ParallelIterator};
     let res = iterator(input.as_bytes(), terminated(parse_line, newline))
         .par_bridge()
-        .filter(|t| validate_test(t.target, &t.list[1..], t.list[0], true))
+        .filter(|t| validate_test(t.target, &t.list, true))
         .map(|t| t.target)
         .sum();
 
@@ -72,18 +84,11 @@ mod tests {
     #[test_case(Test{target: 21037, list: vec![9, 7, 18, 13]}, (false, false))]
     #[test_case(Test{target: 292, list: vec![11, 6, 16, 20]}, (true, true))]
     fn test_validate(x: Test, (y, z): (bool, bool)) {
-        let r = validate_test(x.target, &x.list[1..], x.list[0], false);
-        let r2 = validate_test(x.target, &x.list[1..], x.list[0], true);
+        let r = validate_test(x.target, &x.list, false);
+        let r2 = validate_test(x.target, &x.list, true);
 
         assert_eq!(r, y);
         assert_eq!(r2, z);
-    }
-
-    #[test_case((15,6), 156)]
-    #[test_case((15,600), 15600)]
-    fn test_conc(x: (u64, u64), y: u64) {
-        let r = conc(x.0, x.1);
-        assert_eq!(r, y)
     }
 
     #[test]

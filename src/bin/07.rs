@@ -2,7 +2,9 @@ use advent_of_code::BytesResult;
 use nom::{
     bytes::complete::{tag, take},
     character::complete::{newline, u64},
+    combinator::iterator,
     multi::separated_list1,
+    sequence::terminated,
 };
 
 advent_of_code::solution!(7);
@@ -20,56 +22,39 @@ fn parse_line(input: &[u8]) -> BytesResult<Test> {
     Ok((input, Test { target, list }))
 }
 
-fn validate_test(target: u64, list: &[u64], part2: bool) -> bool {
-    if list.len() == 1 {
-        return list[0] == target;
-    }
-    let mut add_list = vec![list[0] + list[1]];
-    add_list.extend_from_slice(&list[2..]);
+fn conc(lhs: u64, rhs: u64) -> u64 {
+    lhs * 10u64.pow(rhs.ilog10() + 1) + rhs
+}
 
-    if validate_test(target, &add_list, part2) {
-        return true;
+fn validate_test(target: u64, list: &[u64], acc: u64, part2: bool) -> bool {
+    if list.is_empty() {
+        return acc == target;
     }
 
-    if part2 {
-        let mut conc_list = vec![list[0] * 10u64.pow(list[1].ilog10() + 1) + list[1]];
-
-        conc_list.extend_from_slice(&list[2..]);
-        if validate_test(target, &conc_list, part2) {
-            return true;
-        };
-    }
-
-    let mut mul_list = vec![list[0] * list[1]];
-    mul_list.extend_from_slice(&list[2..]);
-
-    validate_test(target, &mul_list, part2)
+    acc <= target
+        && (validate_test(target, &list[1..], acc + list[0], part2)
+            || validate_test(target, &list[1..], acc * list[0], part2)
+            || (part2 && validate_test(target, &list[1..], conc(acc, list[0]), part2)))
 }
 
 pub fn part_one(input: &str) -> Option<u64> {
-    let input = input.as_bytes();
-    let (_, tests) = separated_list1(newline, parse_line)(input).ok()?;
+    let res = iterator(input.as_bytes(), terminated(parse_line, newline))
+        .filter(|t| validate_test(t.target, &t.list[1..], t.list[0], false))
+        .map(|t| t.target)
+        .sum();
 
-    Some(
-        tests
-            .into_iter()
-            .filter(|t| validate_test(t.target, &t.list, false))
-            .map(|t| t.target)
-            .sum(),
-    )
+    Some(res)
 }
 
 pub fn part_two(input: &str) -> Option<u64> {
-    let input = input.as_bytes();
-    let (_, tests) = separated_list1(newline, parse_line)(input).ok()?;
+    use rayon::iter::{ParallelBridge, ParallelIterator};
+    let res = iterator(input.as_bytes(), terminated(parse_line, newline))
+        .par_bridge()
+        .filter(|t| validate_test(t.target, &t.list[1..], t.list[0], true))
+        .map(|t| t.target)
+        .sum();
 
-    Some(
-        tests
-            .into_iter()
-            .filter(|t| validate_test(t.target, &t.list, true))
-            .map(|t| t.target)
-            .sum(),
-    )
+    Some(res)
 }
 
 #[cfg(test)]
@@ -87,11 +72,18 @@ mod tests {
     #[test_case(Test{target: 21037, list: vec![9, 7, 18, 13]}, (false, false))]
     #[test_case(Test{target: 292, list: vec![11, 6, 16, 20]}, (true, true))]
     fn test_validate(x: Test, (y, z): (bool, bool)) {
-        let r = validate_test(x.target, &x.list, false);
-        let r2 = validate_test(x.target, &x.list, true);
+        let r = validate_test(x.target, &x.list[1..], x.list[0], false);
+        let r2 = validate_test(x.target, &x.list[1..], x.list[0], true);
 
         assert_eq!(r, y);
         assert_eq!(r2, z);
+    }
+
+    #[test_case((15,6), 156)]
+    #[test_case((15,600), 15600)]
+    fn test_conc(x: (u64, u64), y: u64) {
+        let r = conc(x.0, x.1);
+        assert_eq!(r, y)
     }
 
     #[test]

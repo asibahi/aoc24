@@ -28,7 +28,7 @@ fn validate_test(test: u64, list: &[u64], part2: bool) -> bool {
     }
     let n = *list.last().unwrap();
 
-    if n >= test {
+    if n > test {
         return false;
     }
     let next_list = &list[..list.len() - 1];
@@ -40,8 +40,8 @@ fn validate_test(test: u64, list: &[u64], part2: bool) -> bool {
 
     if part2 {
         let d = 10u64.pow(n.ilog10() + 1);
-        let concable = (test - n) % d == 0;
-        if concable && validate_test((test - n) / d, next_list, part2) {
+        let concable = test % d == n;
+        if concable && validate_test(test / d, next_list, part2) {
             return true;
         }
     }
@@ -51,8 +51,7 @@ fn validate_test(test: u64, list: &[u64], part2: bool) -> bool {
 
 pub fn part_one(input: &str) -> Option<u64> {
     let res = iterator(input.as_bytes(), terminated(parse_line, newline))
-        .filter(|t| validate_test(t.target, &t.list, false))
-        .map(|t| t.target)
+        .filter_map(|t| validate_test(t.target, t.list.leak(), false).then_some(t.target))
         .sum();
 
     Some(res)
@@ -62,8 +61,7 @@ pub fn part_two(input: &str) -> Option<u64> {
     use rayon::iter::{ParallelBridge, ParallelIterator};
     let res = iterator(input.as_bytes(), terminated(parse_line, newline))
         .par_bridge()
-        .filter(|t| validate_test(t.target, &t.list, true))
-        .map(|t| t.target)
+        .filter_map(|t| validate_test(t.target, t.list.leak(), true).then_some(t.target))
         .sum();
 
     Some(res)

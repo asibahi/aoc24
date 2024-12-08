@@ -22,6 +22,7 @@ name = "advent_of_code"
 version = "0.11.0"
 dependencies = [
  "ahash",
+ "arrayvec",
  "chrono",
  "dhat",
  "itertools",
@@ -60,6 +61,12 @@ checksum = "819e7219dbd41043ac279b19830f2efc897156490d7fd6ea916720117ee66311"
 dependencies = [
  "libc",
 ]
+
+[[package]]
+name = "arrayvec"
+version = "0.7.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
 
 [[package]]
 name = "autocfg"

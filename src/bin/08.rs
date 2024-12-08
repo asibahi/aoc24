@@ -26,28 +26,17 @@ fn parse_antenna(input: Span) -> SpanResult<Antenna> {
 }
 
 pub fn part_one(input: &str) -> Option<u32> {
+    let len = input.lines().count() as i32;
     let mut input = Span::new(input.as_bytes());
-    let mut antennas = Vec::new();
+    let mut map: HashMap<char, Vec<(i32, i32)>> = HashMap::with_capacity(2000);
+    let mut antinodes = HashSet::with_capacity(2000);
 
     while let Ok((rem, ant)) = parse_antenna(input) {
         input = rem;
         if ant.name != '.' && ant.name != '\n' {
-            antennas.push(ant);
+            map.entry(ant.name).or_default().push((ant.row, ant.col));
         }
     }
-
-    let mut map: HashMap<char, Vec<(i32, i32)>> = HashMap::new();
-    for a in antennas
-        .into_iter()
-        .filter(|a| a.name != '.' && a.name != '\n')
-    {
-        map.entry(a.name).or_default().push((a.row, a.col));
-    }
-
-    let len = 50;
-
-    let mut antinodes = HashSet::new();
-
     for (_, v) in map {
         let v = v.into_iter().tuple_combinations();
 
@@ -74,27 +63,19 @@ fn sub(lhs: (i32, i32), rhs:(i32,i32)) -> (i32, i32) {
 }
 
 pub fn part_two(input: &str) -> Option<u32> {
+    let len = input.lines().count() as i32;
     let mut input = Span::new(input.as_bytes());
-    let mut antennas = Vec::new();
+    let mut map: HashMap<char, Vec<(i32, i32)>> = HashMap::with_capacity(2000);
+    let mut antinodes = HashSet::with_capacity(2000);
 
     while let Ok((rem, ant)) = parse_antenna(input) {
         input = rem;
         if ant.name != '.' && ant.name != '\n' {
-            antennas.push(ant);
+            map.entry(ant.name).or_default().push((ant.row, ant.col));
+
+            antinodes.insert((ant.row, ant.col));
         }
     }
-
-    let mut map: HashMap<char, Vec<(i32, i32)>> = HashMap::new();
-    for a in antennas
-        .iter()
-        .filter(|a| a.name != '.' && a.name != '\n')
-    {
-        map.entry(a.name).or_default().push((a.row, a.col));
-    }
-
-    let len = 50;
-
-    let mut antinodes = HashSet::from_iter(antennas.iter().map(|a| (a.row, a.col)));
 
     for (_, v) in map {
         let v = v.into_iter().tuple_combinations();

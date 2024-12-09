@@ -27,44 +27,40 @@ pub fn part_one(input: &str) -> Option<usize> {
         input = rem;
         file = !file;
 
-        if file {
-            for _ in 0..number {
+        for _ in 0..number {
+            if file {
                 blocks.push(Block::File { id });
-            }
-            id += 1;
-        } else {
-            for _ in 0..number {
+            } else {
                 blocks.push(Block::Empty);
             }
         }
+        id += file as usize;
     }
 
-    for idx in 0..blocks.len() {
-        let b = blocks[idx];
-        if matches!(b, Block::File { .. }) {
+    let mut empty_idx = 0;
+    while let Some(last_block) = blocks.pop() {
+        if matches!(last_block, Block::Empty) {
             continue;
         }
-
-        let mut rev_idx = blocks.len() - 1;
-        loop {
-            let b_r = blocks[rev_idx];
-            if matches!(b_r, Block::File { .. }) {
-                blocks[idx] = b_r;
-                blocks[rev_idx] = Block::Empty;
-                // rev_idx -= 1;
-                break;
-            }
-            rev_idx -= 1;
-        }
+        let Some((idx, _)) = blocks
+            .iter()
+            .enumerate()
+            .skip(empty_idx)
+            .find(|(_, b)| matches!(b, Block::Empty))
+        else {
+            blocks.push(last_block);
+            break;
+        };
+        empty_idx = idx;
+        blocks[idx] = last_block;
     }
 
     let res = blocks
         .into_iter()
-        .filter(|b| matches!(b, Block::File { .. }))
         .enumerate()
         .map(|(idx, b)| {
             let Block::File { id } = b else {
-                unreachable!()
+                unreachable!();
             };
 
             idx * id
@@ -84,7 +80,7 @@ pub fn part_two(input: &str) -> Option<usize> {
     let mut input = input.as_bytes();
 
     let mut id = 0;
-    let mut blocks = Vec::with_capacity(input.len());
+    let mut blocks = Vec::with_capacity(input.len() * 2);
     let mut file = false;
 
     while let Ok((rem, number)) = parse_block(input) {
@@ -115,34 +111,31 @@ pub fn part_two(input: &str) -> Option<usize> {
             continue;
         };
 
-        let first_space = blocks
-            .iter()
-            .enumerate()
-            .find(|(_, b)| matches!(b.block, Block::Empty if b.len >= len));
-        let consumed_space = blocks
-            .iter()
-            .enumerate()
-            .find(|(_, b)| matches!(b.block, Block::File { id: id_test } if id_test == id));
-
-        let Some((empty_idx, _)) = first_space else {
+        let mut biter = blocks.iter().enumerate();
+        let Some((e_idx, e_len)) = biter
+            .find(|(_, b)| matches!(b.block, Block::Empty if b.len >= len))
+            .map(|(i, b)| (i, b.len))
+        else {
             continue;
         };
-        let Some((consumed_idx, _)) = consumed_space else {
+        let Some(c_idx) = biter
+            .find(|(_, b)| matches!(b.block, Block::File { id: id_test } if id_test == id))
+            .map(|(i, _)| i)
+        else {
             continue;
         };
 
-        if consumed_idx <= empty_idx {
-            continue;
-        }
-        blocks[consumed_idx] = CBlock {
+        blocks[c_idx] = CBlock {
             len,
             block: Block::Empty,
         };
-        blocks[empty_idx] = CBlock {
-            len: blocks[empty_idx].len - len,
-            block: Block::Empty,
-        };
-        blocks.insert(empty_idx, last_block);
+
+        if e_len == len {
+            blocks[e_idx] = last_block;
+        } else {
+            blocks[e_idx].len -= len;
+            blocks.insert(e_idx, last_block);
+        }
     }
 
     let res = blocks
